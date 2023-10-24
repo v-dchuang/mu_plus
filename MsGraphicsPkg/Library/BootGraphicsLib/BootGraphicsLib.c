@@ -219,6 +219,34 @@ DisplayBootGraphic (
   }
 
 CleanUp:
+  Status = GetBootGraphic (Graphic, &ImageSize, &ImageData);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "GetPlatformBootGraphic Status: %r\n", Status));
+    goto CleanUp;
+  }
+
+  //
+  // Convert Bmp To Blt Buffer
+  //
+  Status = TranslateBmpToGopBlt (ImageData, ImageSize, &Blt, &BltSize, &Height, &Width);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "Failed to TranslateBmpToGopBlt In Logo.c %r\n", Status));
+    goto CleanUp;
+  }
+
+  //
+  // Try to open Boot Logo 2 Protocol.^M
+  //
+  Status = gBS->LocateProtocol (&gEdkiiBootLogo2ProtocolGuid, NULL, (VOID **)&BootLogo2);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_WARN, "%a - Failed to find BootLogo2 Protocol. %r\n", __FUNCTION__, Status));
+    BootLogo2 = NULL;
+  }
+  Status = BootLogo2->SetBootLogo (BootLogo2, Blt, DestX, DestY, Width, Height);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a - BootLogo2 Error %r\n", __FUNCTION__, Status));
+  }
+
   if (Blt != NULL) {
     FreePool (Blt);
   }
